@@ -7,7 +7,7 @@ let features = {
 };
 features[spectrum] = []
 let FFTSIZE = 1024
-let G = 0.1
+let G = 0.13
 let GRIDSIZE = 4
 let analyzer, mic;
 let socket = io()
@@ -24,7 +24,7 @@ let planets = new PlanetSystem(G, GRIDSIZE)
  */
 function addPlanets() {
     //let x = features['spectralCentroid']
-    let y = features['spectralFlatness']
+    let y = Math.log(features['spectralCentroid'])
     let v = features['rms']
     for (let i = 0; i < features[spectrum].length; i++) {
         let lfreq = Math.log(i)
@@ -32,7 +32,7 @@ function addPlanets() {
         if (features[spectrum][i] > 0.01) {
             planets.add_fixed_mass(
                 map(lfreq, 0, Math.log(features[spectrum].length), p, 1024 - p),
-                map(y, 0, 0.5, p * 2, 1024 - p * 2),
+                map(y, 0, Math.log(FFTSIZE / 2), p * 2, 1024 - p * 2),
                 Math.sqrt(features[spectrum][i]),
             )
         }

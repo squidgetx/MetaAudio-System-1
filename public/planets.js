@@ -190,7 +190,7 @@ class PlanetSystem {
 
             let osc1freq = Math.round(constrain(map(planet.dx, 4.0, -4.0, 1, 100), 1, 100))
             let osc2freq = Math.round(constrain(map(planet.dy, -2.0, 2.0, 1, 110), 1, 110))
-            let osc3freq = Math.round(constrain(map(theta, 0, Math.PI * 2, 1, 101), 1, 100))
+            let osc3freq = Math.round(constrain(map(speed, 0, Math.PI * 2, 10, 101), 1, 100))
             let filterfreq = Math.round(constrain(map(speed, 0, 5, 20, 100), 10, 100))
             socket.emit('data', {
                 volume: 100,
