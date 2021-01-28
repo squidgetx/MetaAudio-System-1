@@ -39,6 +39,18 @@ io.sockets.on('connection',
   function (socket) {
     console.log("We have a new client: " + socket.id);
     // Listen for data from this client
+    socket.on('midi', function(data) {
+          oscPort.send({
+          address: "/planet_control/midi",
+          args: [{
+              type: "i",
+              value: parseInt(data.midiNote)
+          }, {
+            type: "i",
+            value: parseInt(data.midiVel)
+          }]
+        });
+    });
     socket.on('data', function(data) {
       // Data can be numbers, strings, objects
       //console.log("Received: 'data' " + JSON.stringify(data));
@@ -77,8 +89,9 @@ io.sockets.on('connection',
               type: "i",
               value: parseInt(data.filterfreq)
           }]
-      });
+        });
       }
+   
     });
 
     // Listen for this client to disconnect

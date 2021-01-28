@@ -1,9 +1,10 @@
 /* style.css */
 
-html, body {
+html,
+body {
   height: 100%;
   border: 0px;
-  background-color: rgb(255, 250, 240)
+  background-color: rgb(255, 252, 245);
 }
 
 body {

@@ -34,12 +34,7 @@ class FixedMass {
     }
 
     draw() {
-        push()
-        stroke(this.c)
-        fill(this.c)
-        //text(this.dx.toFixed(2), this.x, this.y)
         circle(this.x, this.y, this.r)
-        pop()
     }
 }
 
@@ -90,42 +85,34 @@ class PlanetSystem {
     /* Step all planets according to gravitational constant G */
     step() {
         // first handle collisions
-        /*
-        for(let i = 0; i < this.planets.length; i++) {
-            for(let j = 0; j < this.planets.length; j++) {
-                if (i == j) {
-                    continue;
-                }
-                if (this.planets[i].dead || this.planets[j].dead) {
-                    continue;
-                }
-                let dist_sq = get_distance_sq(this.planets[i], this.planets[j])
-                if (Math.sqrt(dist_sq) < (this.planets[i].r + this.planets[j].r)) {
-                  
-                }
-            }
-        }
-        */
-
         for(let i = 0; i < this.planets.length; i++) {
             let planet = this.planets[i]
-            for(let lookup in this.fixedMasses) {
+            for(const lookup in this.fixedMasses) {
                 // calculate force exerted on planet i by planet j
-                let mass = this.fixedMasses[lookup]
-                let dist_sq = get_distance_sq(planet, mass)
-                let dist = Math.sqrt(dist_sq)
+                const mass = this.fixedMasses[lookup]
+                if (mass < 1) {
+                    continue;
+                }
+                const dist_sq = get_distance_sq(planet, mass)
+                const dist = Math.sqrt(dist_sq)
                 // let f = g * this.planets[i].m * this.planets[j].m / dist_sq
                 if (dist < planet.r || dist < mass.r) {
                     continue;
                 }
-                let a = this.g * mass.m / dist_sq
+                //const a = this.g * mass.m / dist_sq
+                const a_dist = this.g * mass.m / dist_sq / dist
                 // acceleration components are proportional to distances
-                let a_x = a / Math.sqrt(dist_sq) * (mass.x - planet.x)
-                let a_y = a / Math.sqrt(dist_sq) * (mass.y - planet.y)
+                const a_x = a_dist * (mass.x - planet.x)
+                const a_y = a_dist * (mass.y - planet.y)
                 if (a_x && a_y) {
                     planet.dx += a_x
                     planet.dy += a_y
                 }
+            }
+            let spd = Math.sqrt(planet.dx ** planet.dx + planet.dy ** planet.dy)
+            if (spd > 5) {
+                planet.dx = planet.dx * 5 / spd
+                planet.dy = planet.dy * 5 / spd
             }
             planet.x += planet.dx
             planet.y += planet.dy
@@ -146,10 +133,9 @@ class PlanetSystem {
             }
             */
         }
-        this.planets = this.planets.filter(a => a.dead == false)
 
-        for(let lookup in this.fixedMasses) {
-            this.fixedMasses[lookup].m -= this.fixedMasses[lookup].r ** 1.1 / 4
+        for(const lookup in this.fixedMasses) {
+            this.fixedMasses[lookup].m -= this.fixedMasses[lookup].r  / 8
             this.fixedMasses[lookup].r = Math.sqrt(this.fixedMasses[lookup].m)
         }
         this.fixedMasses = Object.fromEntries(Object.entries(this.fixedMasses).filter(([k,v]) => v.m > 0));
@@ -157,18 +143,25 @@ class PlanetSystem {
     }
 
     draw() {
+        push()
         for(let i in this.fixedMasses) {
             let mass = this.fixedMasses[i]
             // draw 
-            push()
-            stroke('red')
-            fill('red')
-            circle(mass.x, mass.y, mass.r)
-            pop()
+            // p5 suks for drawing lots of things at once, use the canvas API directly
+            drawingContext.moveTo(mass.x, mass.y)
+            drawingContext.arc(mass.x, mass.y, mass.r, 0, 2 * Math.PI, false);
+            //circle(mass.x, mass.y, mass.r)
         }
+        drawingContext.fillStyle = '#aaa';
+        drawingContext.fill();
+        pop()
+        push()
+        stroke('black')
+        fill('black')
         for(let i = 0; i < this.planets.length; i++) {
             this.planets[i].draw()
         }
+        pop()
     }
 
     sendOsc() {
@@ -188,21 +181,38 @@ class PlanetSystem {
             } 
             let volume = Math.round(constrain(map(dist, 0, 100, 100, 40), 0, 100))
 
-            let osc1freq = Math.round(constrain(map(planet.dx, 4.0, -4.0, 1, 100), 1, 100))
-            let osc2freq = Math.round(constrain(map(planet.dy, -2.0, 2.0, 1, 110), 1, 110))
-            let osc3freq = Math.round(constrain(map(speed, 0, Math.PI * 2, 10, 101), 1, 100))
-            let filterfreq = Math.round(constrain(map(speed, 0, 5, 20, 100), 10, 100))
-            socket.emit('data', {
+            let saturator = Math.round(constrain(map(Math.abs(planet.dx), 0, 4.0, 36, 96), 24, 96))
+            let amp = Math.round(constrain(map(Math.abs(planet.dy), 0, 4.0, 1, 48), 1, 64))
+            let osc3freq = Math.round(constrain(map(theta, 0, Math.PI * 2, 10, 101), 1, 100))
+            let filterfreq = Math.round(constrain(map(speed, 0, 5, 100, 127), 100, 127))
+            let data = {
                 volume: 100,
-                osc1freq: osc1freq,
-                osc2freq: osc2freq,
+                osc1freq: saturator,
+                osc2freq: amp,
                 osc3freq: osc3freq,
                 filterfreq: filterfreq,
-            })
-            
-            
-           
-           
+            }
+            socket.emit('data', data)
+
+            // C D E G B
+            let n = [0, 2, 4, 7, 11]
+            n = n.map(x => x + 30)
+            n = n.concat(n.map(x => x + 12))
+            n = n.concat(n.map(x => x + 24))
+            n = n.concat(n.map(x => x + 48))
+            let nIndex = Math.round(constrain(map(theta, 0, Math.PI, 0, n.length), 0, n.length))
+            let newNote = n[nIndex]
+            if (newNote !== planet.curNote) {
+                socket.emit('midi', {
+                    midiNote: planet.curNote,
+                    midiVel: 0,
+                });
+                socket.emit('midi', {
+                    midiNote: newNote,
+                    midiVel: 100,
+                });
+                planet.curNote = newNote
+            }
            
         }
     }
